@@ -94,6 +94,8 @@ class _SearchScreenState extends State<SearchScreen>
 
   // お気に入りサービスのリスナーが追加されたかどうかのフラグ
   bool _favoriteListenerAdded = false;
+  // お気に入りサービスを保存するための変数
+  FavoriteService? _favoriteService;
 
   @override
   void initState() {
@@ -116,8 +118,8 @@ class _SearchScreenState extends State<SearchScreen>
     
     // お気に入りサービスのリスナーを設定（まだ追加されていない場合のみ）
     if (!_favoriteListenerAdded) {
-      final favoriteService = Provider.of<FavoriteService>(context, listen: false);
-      favoriteService.addListener(_handleFavoriteChange);
+      _favoriteService = Provider.of<FavoriteService>(context, listen: false);
+      _favoriteService!.addListener(_handleFavoriteChange);
       _favoriteListenerAdded = true;
     }
   }
@@ -128,9 +130,8 @@ class _SearchScreenState extends State<SearchScreen>
     _searchFocusNode.dispose();
     
     // お気に入りサービスのリスナーを削除
-    if (_favoriteListenerAdded) {
-      final favoriteService = Provider.of<FavoriteService>(context, listen: false);
-      favoriteService.removeListener(_handleFavoriteChange);
+    if (_favoriteListenerAdded && _favoriteService != null) {
+      _favoriteService!.removeListener(_handleFavoriteChange);
     }
     
     super.dispose();
@@ -165,7 +166,7 @@ class _SearchScreenState extends State<SearchScreen>
   
   // 動画リストにお気に入り状態を適用
   List<YoutubeVideo> _updateVideosWithFavoriteStatus(List<YoutubeVideo> videos) {
-    final favoriteService = Provider.of<FavoriteService>(context, listen: false);
+    final favoriteService = _favoriteService ?? Provider.of<FavoriteService>(context, listen: false);
     return videos.map((video) {
       // 動画のお気に入り状態を設定
       final isFavorite = favoriteService.isFavorite(video.videoId);
@@ -197,37 +198,79 @@ class _SearchScreenState extends State<SearchScreen>
 
   /// ビデオを取得してソート
   Future<List<YoutubeVideo>> _getVideos() async {
+    // デバッグログ追加
+    print('_getVideos called, selectedCategory: $_selectedCategory');
+    
     // キャッシュがあれば使用し、なければデータを読み込み
     List<YoutubeVideo> videos;
     if (_allVideosCache != null) {
+      print('Using cached videos: ${_allVideosCache!.length}');
       videos = List.from(_allVideosCache!);
     } else {
+      print('Loading videos from DataLoaderService');
       videos = await DataLoaderService.loadVideos();
       _allVideosCache = videos;
+      print('Loaded ${videos.length} videos from DataLoaderService');
     }
     
     // お気に入り状態を更新
     videos = _updateVideosWithFavoriteStatus(videos);
+    print('After favorite update, videos count: ${videos.length}');
 
+    // 重要な修正: タグによるフィルタリング
     if (_selectedCategory != null && _selectedCategory != 'すべて') {
-      videos =
-          videos
-              .where((video) => video.tags.contains(_selectedCategory))
-              .toList();
+      print('Filtering by category: $_selectedCategory');
+      // タグのリストをログ出力して確認
+      print('Sample video tags: ${videos.isNotEmpty ? videos.first.tags : []}');
+      
+      // すべてのタグを集めて出力（デバッグ用）
+      final allTags = videos.expand((v) => v.tags).toSet().toList();
+      print('All available tags (${allTags.length}): $allTags');
+      
+      // フィルタリング前後の件数を比較するためにカウント
+      int beforeCount = videos.length;
+      
+      // 修正: より柔軟なタグマッチングを実装
+      videos = videos.where((video) {
+        // 1. 完全一致を試す
+        bool exactMatch = video.tags.any((tag) => 
+          tag.trim() == _selectedCategory!.trim()
+        );
+        
+        // 2. 完全一致がなければ部分一致を試す
+        if (!exactMatch) {
+          bool partialMatch = video.tags.any((tag) => 
+            tag.trim().toLowerCase().contains(_selectedCategory!.trim().toLowerCase())
+          );
+          return partialMatch;
+        }
+        
+        return exactMatch;
+      }).toList();
+      
+      print('Filtered from $beforeCount to ${videos.length} videos');
+      
+      // フィルタリング結果が0件の場合は追加診断情報を出力
+      if (videos.isEmpty) {
+        print('WARNING: フィルタリング結果が0件です。選択カテゴリ: $_selectedCategory');
+        print('タグ名に揺れがある可能性があります。');
+      }
     }
 
     // 検索クエリがあればフィルタリング
     if (_searchQuery.isNotEmpty) {
-      videos =
-          videos.where((video) {
-            final title = video.title.toLowerCase();
-            final description = video.description.toLowerCase();
-            final query = _searchQuery.toLowerCase();
-            return title.contains(query) || description.contains(query);
-          }).toList();
+      print('Filtering by search query: $_searchQuery');
+      videos = videos.where((video) {
+        final title = video.title.toLowerCase();
+        final description = video.description.toLowerCase();
+        final query = _searchQuery.toLowerCase();
+        return title.contains(query) || description.contains(query);
+      }).toList();
+      print('After search filter, videos count: ${videos.length}');
     }
 
     // 選択されたソート基準でソート
+    print('Sorting videos by $_sortCriteria');
     switch (_sortCriteria) {
       case SortCriteria.dateDesc:
         videos.sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
@@ -255,18 +298,26 @@ class _SearchScreenState extends State<SearchScreen>
         break;
     }
 
+    print('Returning ${videos.length} videos');
     return videos;
   }
 
   /// Handle category selection
   void _handleCategorySelected(String category) {
+    // 詳細なデバッグログを追加
+    print('_handleCategorySelected: category=$category, previous=$_selectedCategory');
+    
     setState(() {
       if (category == 'すべて') {
         _selectedCategory = null;
+        print('Category set to null (すべて selected)');
       } else {
         _selectedCategory = category;
+        print('Category set to: $_selectedCategory');
       }
-      // カテゴリが変更されたら再読み込み
+      // キャッシュをクリアして再読み込み
+      _allVideosCache = null;
+      print('Cache cleared, reloading videos');
       _videosFuture = _getVideos();
     });
   }
@@ -287,12 +338,28 @@ class _SearchScreenState extends State<SearchScreen>
 
   /// Handle video tap
   void _handleVideoTap(YoutubeVideo video) {
+    // 詳細画面に遷移する前のカテゴリを保存
+    final String? previousCategory = _selectedCategory;
+    print('Navigating to detail, current category: $_selectedCategory');
+    
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => VideoDetailScreen(video: video)),
     ).then((_) {
       // 詳細画面から戻ってきた時にデータを再読み込み
+      print('Returned from detail screen, preserving category: $previousCategory');
+      
+      // VideoDataManager から最新データを取得
+      DataLoaderService.clearCache(); // 重要: サービスのキャッシュもクリア
+      
       setState(() {
+        // カテゴリを保持（これが重要）
+        _selectedCategory = previousCategory;
+        print('Category set back to: $_selectedCategory');
+        
+        // キャッシュをクリアして再読み込み
+        _allVideosCache = null;
+        print('Cache cleared after return from detail');
         _videosFuture = _getVideos();
       });
     });

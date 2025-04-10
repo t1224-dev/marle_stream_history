@@ -186,18 +186,45 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
 
   /// Open the YouTube video
   Future<void> _openYouTube() async {
-    // アーカイブURLが無効の場合はYouTubeを開かない
-    if (!_showArchiveSection) {
-      // アーカイブ機能が無効の場合はアクセスできない旨を表示
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('この機能は現在利用できません'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+    final video = widget.video;
+    
+    // X.comへのリンクの場合は常に遷移可能
+    final bool isXLink = video.videoUrl.contains('x.com');
+    
+    // メン限かどうかをチェック（タグまたはタイトルに「メン限」が含まれているか）
+    final bool isMemberOnly = video.tags.any(
+      (tag) => tag.contains('メン限'),
+    ) || video.title.contains('メン限');
+    
+    // 遷移条件の判定:
+    // 1. X.comのリンクなら常に許可
+    // 2. メン限動画はアーカイブがONでも許可しない
+    // 3. 通常の動画はアーカイブ設定がONなら許可
+    final bool canNavigate = isXLink || (_showArchiveSection && !isMemberOnly);
+    
+    if (!canNavigate) {
+      // 遷移できない場合はメッセージを表示
+      if (isMemberOnly) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('メンバー限定動画は視聴できません'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        // アーカイブ機能が無効の場合はアクセスできない旨を表示
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('この機能は現在利用できません'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       return;
     }
-    await VideoService.openYouTube(widget.video, context: context);
+    
+    // 遷移可能な場合はURLを開く
+    await VideoService.openYouTube(video, context: context);
   }
 
   final GlobalKey _shareButtonKey = GlobalKey();
@@ -475,9 +502,22 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
           // 現在の動画のタグを更新（初回のみ）
           if (currentVideo.videoId == widget.video.videoId &&
               _relatedVideosCache == null) {
-            widget.video.tags.clear();
-            widget.video.tags.addAll(currentVideo.tags);
-            debugPrint('タグ更新: ${widget.video.tags}');
+            // 修正: タグをクリアしない
+            // 元のコード: widget.video.tags.clear();
+            
+            // 現在のタグをログ出力（デバッグ用）
+            debugPrint('タグ更新前: ${widget.video.tags}');
+            
+            // 現在のビデオから取得したタグで更新
+            // タグが空でない場合のみ更新（安全策）
+            if (currentVideo.tags.isNotEmpty) {
+              // 安全な更新方法: コピーを作成して更新
+              final List<String> updatedTags = List<String>.from(currentVideo.tags);
+              widget.video.tags.clear();
+              widget.video.tags.addAll(updatedTags);
+            }
+            
+            debugPrint('タグ更新後: ${widget.video.tags}');
           }
 
           // 関連動画を取得（キャッシュがあれば使用）
@@ -510,27 +550,45 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
                       child: _buildThumbnail(widget.video),
                     ),
 
-                    // Play button - アーカイブモードが有効な場合のみ表示
-                    if (_showArchiveSection)
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _openYouTube,
-                          borderRadius: BorderRadius.circular(50),
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withAlpha(204), // 0.8->204
-                              shape: BoxShape.circle,
+                    // Play button - 表示条件を変更
+                    Builder(
+                      builder: (context) {
+                        // X.comへのリンクの場合は常に遷移可能
+                        final bool isXLink = widget.video.videoUrl.contains('x.com');
+                        
+                        // メン限かどうかをチェック
+                        final bool isMemberOnly = widget.video.tags.any(
+                          (tag) => tag.contains('メン限'),
+                        ) || widget.video.title.contains('メン限');
+                        
+                        // 表示条件: X.comリンクなら常に表示、メン限はアーカイブがONでも非表示、通常動画はアーカイブONで表示
+                        final bool showPlayButton = isXLink || (_showArchiveSection && !isMemberOnly);
+                        
+                        if (showPlayButton) {
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _openYouTube,
+                              borderRadius: BorderRadius.circular(50),
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withAlpha(204), // 0.8->204
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.play_arrow,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          ),
-                        ),
-                      ),
+                          );
+                        } else {
+                          return const SizedBox.shrink();
+                        }
+                      },
+                    ),
                   ],
                 ),
 
@@ -721,21 +779,38 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          // YouTubeボタン - アーカイブモードが有効な場合のみ機能する
-                          _buildActionButton(
-                            context,
-                            widget.video.videoUrl.contains('x.com')
-                                ? 'X'
-                                : 'YouTube',
-                            widget.video.videoUrl.contains('x.com')
-                                ? null // アイコンの代わりに画像を使用するためnull
-                                : Icons.play_arrow,
-                            _showArchiveSection ? Colors.red : Colors.grey,
-                            _openYouTube,
-                            customImage:
+                          // YouTubeボタン - 条件に応じてボタンの色を変更
+                          Builder(
+                            builder: (context) {
+                              // リンク種別とメン限判定
+                              final bool isXLink = widget.video.videoUrl.contains('x.com');
+                              final bool isMemberOnly = widget.video.tags.any(
+                                (tag) => tag.contains('メン限'),
+                              ) || widget.video.title.contains('メン限');
+                              
+                              // 色の判定条件: X.comなら常にアクティブ色、メン限は常にグレー、それ以外はアーカイブ設定に依存
+                              final Color buttonColor = isXLink 
+                                  ? Colors.blue // X.comはアクティブ色（青）
+                                  : (isMemberOnly 
+                                      ? Colors.grey // メン限はグレー
+                                      : (_showArchiveSection ? Colors.red : Colors.grey));
+                              
+                              return _buildActionButton(
+                                context,
                                 widget.video.videoUrl.contains('x.com')
-                                    ? 'assets/images/icon/x.jpg'
-                                    : null,
+                                    ? 'X'
+                                    : 'YouTube',
+                                widget.video.videoUrl.contains('x.com')
+                                    ? null
+                                    : Icons.play_arrow,
+                                buttonColor,
+                                _openYouTube,
+                                customImage:
+                                    widget.video.videoUrl.contains('x.com')
+                                        ? 'assets/images/icon/x.jpg'
+                                        : null,
+                              );
+                            }
                           ),
                           _buildActionButton(
                             context,
