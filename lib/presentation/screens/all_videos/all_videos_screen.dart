@@ -284,12 +284,12 @@ class _AllVideosScreenState extends State<AllVideosScreen> {
                   child: Text('公開日（古い順）'),
                 ),
                 DropdownMenuItem(
-                  value: SortCriteria.durationAsc,
-                  child: Text('配信時間（短い順）'),
-                ),
-                DropdownMenuItem(
                   value: SortCriteria.durationDesc,
                   child: Text('配信時間（長い順）'),
+                ),
+                DropdownMenuItem(
+                  value: SortCriteria.durationAsc,
+                  child: Text('配信時間（短い順）'),
                 ),
               ],
               onChanged: (value) {

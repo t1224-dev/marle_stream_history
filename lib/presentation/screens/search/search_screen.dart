@@ -188,10 +188,10 @@ class _SearchScreenState extends State<SearchScreen>
         return '高評価数（多い順）';
       case SortCriteria.likesAsc:
         return '高評価数（少ない順）';
-      case SortCriteria.durationAsc:
-        return '配信時間（短い順）';
       case SortCriteria.durationDesc:
         return '配信時間（長い順）';
+      case SortCriteria.durationAsc:
+        return '配信時間（短い順）';
     }
   }
 
@@ -429,8 +429,8 @@ class _SearchScreenState extends State<SearchScreen>
                     _buildSortChipInModal(SortCriteria.viewsAsc, '再生数（昇順）', tempSortCriteria, handleSortChange),
                     _buildSortChipInModal(SortCriteria.likesDesc, '高評価数（降順）', tempSortCriteria, handleSortChange),
                     _buildSortChipInModal(SortCriteria.likesAsc, '高評価数（昇順）', tempSortCriteria, handleSortChange),
-                    _buildSortChipInModal(SortCriteria.durationAsc, '配信時間（昇順）', tempSortCriteria, handleSortChange),
                     _buildSortChipInModal(SortCriteria.durationDesc, '配信時間（降順）', tempSortCriteria, handleSortChange),
+                    _buildSortChipInModal(SortCriteria.durationAsc, '配信時間（昇順）', tempSortCriteria, handleSortChange),
                   ],
                 ),
                 const SizedBox(height: 20),
