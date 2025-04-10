@@ -1,16 +1,39 @@
-# marle_stream_history
+# マールの軌跡アプリ 機能概要
 
-A new Flutter project.
+## 目的
+引退したVtuber「マール・アストレア」の活動の軌跡を記録し、YouTubeの動画コンテンツをファンがアクセスしやすい形で提供する。
 
-## Getting Started
+## 主要機能
 
-This project is a starting point for a Flutter application.
+### 1. 活動カレンダー表示
+- 月別/週別/日別のカレンダー表示。
+- 活動日にはマーカーが表示され、日付を選択すると関連動画を閲覧可能。
 
-A few resources to get you started if this is your first Flutter project:
+### 2. YouTube動画の整理と表示
+- サムネイル、タイトル、説明文、公開日時などを含む動画詳細情報を表示。
+- YouTubeアプリとの連携（外部起動）や共有機能をサポート。
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### 3. 検索・フィルタリング機能
+- キーワード検索、日付範囲フィルター、タグ検索などで動画を絞り込み。
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 4. お気に入り登録機能
+- ユーザーが気に入った動画をお気に入り登録し、一覧で管理可能。
+
+### 5. 共有機能
+- 動画情報をサムネイル画像とメッセージ付きで外部アプリ（SNSなど）と共有。
+
+### 6. 隠し機能（アーカイブURL表示）
+- 設定画面で特定の操作を行うと、動画詳細画面にアーカイブURLを表示可能。
+
+## 対象プラットフォーム
+- モバイル（iOS/Android）
+- **開発フレームワーク**: Flutter
+
+## その他の特徴
+- **UI/UX**: Material Design 3をベースに、マール・アストレアのイメージカラー（白、水色、薄紫色）を採用。
+- **データ管理**: ローカルデータベース（SQLite）と内部ストレージを使用し、オフラインでも動作可能。
+- **初期データ**: アプリ初回起動時にJSONデータから自動展開。
+
+--- 
+
+このアプリは、ファンがマール・アストレアの活動を振り返りやすくするためのツールとして設計されています。特に、カレンダー機能や検索機能を通じて、過去の動画を効率的に閲覧できる点が特徴です。
