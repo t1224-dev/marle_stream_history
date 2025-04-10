@@ -285,7 +285,7 @@ class VideoCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
-                                '${NumberFormat.decimalPattern().format(video.viewCount.toInt())} 回視聴',
+                                _formatViewCount(video.viewCount.toInt()),
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(color: Colors.grey[600]),
                                 overflow: TextOverflow.ellipsis,
@@ -440,5 +440,17 @@ class VideoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// 再生回数を適切にフォーマットする
+  String _formatViewCount(int count) {
+    if (count >= 10000) {
+      // 1万以上の場合は「X.X万回視聴」形式で表示
+      final valueInTenThousands = count / 10000;
+      return '${valueInTenThousands.toStringAsFixed(1)}万回視聴';
+    } else {
+      // 1万未満の場合は通常のフォーマット
+      return '${NumberFormat.decimalPattern().format(count)} 回視聴';
+    }
   }
 }

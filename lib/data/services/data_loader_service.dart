@@ -6,7 +6,6 @@ import 'package:marle_stream_history/domain/models/calendar_event.dart';
 import 'package:marle_stream_history/data/services/database_service.dart';
 import 'package:marle_stream_history/data/services/csv_parser_service.dart';
 import 'package:marle_stream_history/data/services/data_source.dart';
-import 'package:marle_stream_history/domain/services/settings_service.dart';
 
 /// Service for loading data from JSON files
 class DataLoaderService {

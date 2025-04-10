@@ -106,13 +106,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      // お気に入りデータをクリア
-      final favoriteService = Provider.of<FavoriteService>(
-        context,
-        listen: false,
-      );
-      await favoriteService.clearFavorites();
-      
+      // お気に入りデータをクリア (mountedチェックを追加)
+      if (mounted) {
+        final favoriteService = Provider.of<FavoriteService>(
+          context,
+          listen: false,
+        );
+        await favoriteService.clearFavorites();
+      } else {
+        // mounted でない場合は処理を中断
+        return;
+      }
+
       // データベースをクリア
       await _databaseService.clearDatabase();
       

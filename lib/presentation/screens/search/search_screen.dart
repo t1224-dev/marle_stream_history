@@ -5,6 +5,8 @@ import 'package:marle_stream_history/presentation/screens/video_detail/video_det
 import 'package:marle_stream_history/presentation/widgets/category_scroller.dart';
 import 'package:marle_stream_history/presentation/widgets/video_card.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:provider/provider.dart';
+import 'package:marle_stream_history/domain/services/favorite_service.dart';
 
 // 修正内容:
 // - フィルター適用は「適用する」ボタン押下時のみ
@@ -90,6 +92,9 @@ class _SearchScreenState extends State<SearchScreen>
   late Future<List<YoutubeVideo>> _videosFuture;
   late Future<List<String>> _allTagsFuture;
 
+  // お気に入りサービスのリスナーが追加されたかどうかのフラグ
+  bool _favoriteListenerAdded = false;
+
   @override
   void initState() {
     super.initState();
@@ -106,9 +111,28 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // お気に入りサービスのリスナーを設定（まだ追加されていない場合のみ）
+    if (!_favoriteListenerAdded) {
+      final favoriteService = Provider.of<FavoriteService>(context, listen: false);
+      favoriteService.addListener(_handleFavoriteChange);
+      _favoriteListenerAdded = true;
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    
+    // お気に入りサービスのリスナーを削除
+    if (_favoriteListenerAdded) {
+      final favoriteService = Provider.of<FavoriteService>(context, listen: false);
+      favoriteService.removeListener(_handleFavoriteChange);
+    }
+    
     super.dispose();
   }
 
@@ -117,9 +141,36 @@ class _SearchScreenState extends State<SearchScreen>
     // 初回のみ実際にデータを読み込み、以降はキャッシュを使用
     _videosFuture = DataLoaderService.loadVideos().then((videos) {
       _allVideosCache = videos;
-      return videos;
+      
+      // お気に入り状態を更新
+      return _updateVideosWithFavoriteStatus(videos);
     });
     _allTagsFuture = DataLoaderService.extractAllTags();
+  }
+  
+  // お気に入り状態が変更された時の処理
+  void _handleFavoriteChange() {
+    if (mounted) {
+      setState(() {
+        // お気に入り状態が変更されたため、キャッシュされた動画データを更新
+        if (_allVideosCache != null) {
+          _allVideosCache = _updateVideosWithFavoriteStatus(_allVideosCache!);
+        }
+        
+        // 動画データを再取得
+        _videosFuture = _getVideos();
+      });
+    }
+  }
+  
+  // 動画リストにお気に入り状態を適用
+  List<YoutubeVideo> _updateVideosWithFavoriteStatus(List<YoutubeVideo> videos) {
+    final favoriteService = Provider.of<FavoriteService>(context, listen: false);
+    return videos.map((video) {
+      // 動画のお気に入り状態を設定
+      final isFavorite = favoriteService.isFavorite(video.videoId);
+      return video.copyWith(isFavorite: isFavorite);
+    }).toList();
   }
 
   /// ソート基準に応じたラベルを取得
@@ -154,6 +205,9 @@ class _SearchScreenState extends State<SearchScreen>
       videos = await DataLoaderService.loadVideos();
       _allVideosCache = videos;
     }
+    
+    // お気に入り状態を更新
+    videos = _updateVideosWithFavoriteStatus(videos);
 
     if (_selectedCategory != null && _selectedCategory != 'すべて') {
       videos =
@@ -236,7 +290,12 @@ class _SearchScreenState extends State<SearchScreen>
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => VideoDetailScreen(video: video)),
-    );
+    ).then((_) {
+      // 詳細画面から戻ってきた時にデータを再読み込み
+      setState(() {
+        _videosFuture = _getVideos();
+      });
+    });
   }
 
   /// Build a grid of videos

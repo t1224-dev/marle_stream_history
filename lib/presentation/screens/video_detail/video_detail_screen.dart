@@ -122,6 +122,9 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
 
       // Remove from favorites
       await favoriteService.removeFavorite(currentVideoId); // videoIdを使用
+      
+      // 元の動画オブジェクトのisFavorite状態も更新
+      widget.video.isFavorite = false;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -140,6 +143,9 @@ class _VideoDetailScreenState extends State<VideoDetailScreen> {
 
       // 追加処理はFavoriteNoteDialog内で行われるため、ここでは何もしない
       if (result != true) return;
+      
+      // 元の動画オブジェクトのisFavorite状態も更新
+      widget.video.isFavorite = true;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

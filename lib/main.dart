@@ -83,7 +83,7 @@ class MyApp extends StatelessWidget {
             title: 'マールの軌跡',
             theme: AppTheme.lightTheme(),
             darkTheme: AppTheme.darkTheme(),
-            themeMode: themeProvider.themeMode,
+            themeMode: ThemeMode.light,
             home: MainLayout(initializationFuture: initializationFuture),
             debugShowCheckedModeBanner: false,
           );
