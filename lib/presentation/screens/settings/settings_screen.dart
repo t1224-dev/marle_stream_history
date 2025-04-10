@@ -222,7 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onTap: _handleVersionTap,
                 child: ListTile(
                   title: const Text('バージョン'),
-                  subtitle: const Text('1.0.0'),
+                  subtitle: const Text('1.0.1'),
                   leading: const Icon(Icons.info_outline),
                 ),
               ),
