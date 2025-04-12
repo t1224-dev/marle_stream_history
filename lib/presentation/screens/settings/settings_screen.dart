@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:marle_stream_history/data/services/database_service.dart';
 import 'package:marle_stream_history/data/services/data_loader_service.dart';
 import 'package:marle_stream_history/domain/services/favorite_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Settings screen for the application
 class SettingsScreen extends StatefulWidget {
@@ -174,6 +175,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// メール送信機能
+  Future<void> _launchEmail() async {
+    const email = 'develop.t1224@gmail.com'; // 指定されたメールアドレス
+    const subject = 'マールの軌跡に関するお問い合わせ・ご要望'; // メールタイトル
+    const body = '以下の内容でお問い合わせいたします。\n\n'
+        '【ご利用の端末機種】：\n'
+        '【OSバージョン】：\n'
+        '【アプリのバージョン】：\n\n'
+        '【お問い合わせ・ご要望内容】：\n（できるだけ詳しくご記入ください）\n';
+
+    final uri = Uri(
+      scheme: 'mailto',
+      path: email,
+      queryParameters: {
+        'subject': subject,
+        'body': body,
+      },
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('メールアプリを開けませんでした'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,6 +265,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: const Text('開発者'),
                 subtitle: const Text('kurage'),
                 leading: const Icon(Icons.code),
+              ),
+
+              // お問い合わせ・要望
+              ListTile(
+                title: const Text('お問い合わせ・要望'),
+                subtitle: const Text('メールでご連絡ください'),
+                leading: const Icon(Icons.email),
+                onTap: _launchEmail,
               ),
 
               // Hidden archive section

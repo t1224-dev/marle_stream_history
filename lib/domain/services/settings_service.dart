@@ -7,29 +7,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsService extends ChangeNotifier {
   /// Current application settings
   AppSettings _settings = AppSettings.defaults;
-  
+
   // キー名
   static const String _settingsKey = 'app_settings';
-  
+
   /// Get current settings
   AppSettings get settings => _settings;
-  
+
   /// Whether dark mode is enabled
   bool get isDarkMode => _settings.themeMode == ThemeMode.dark;
-  
+
   /// Whether to show archive URLs
   bool get enableArchiveUrls => _settings.enableArchiveUrls;
-  
+
   /// Current theme mode
   ThemeMode get themeMode => _settings.themeMode;
-  
+
   /// Initialize settings
   Future<void> init() async {
     try {
       // SharedPreferencesから設定を読み込む
       final prefs = await SharedPreferences.getInstance();
       final settingsJson = prefs.getString(_settingsKey);
-      
+
       if (settingsJson != null) {
         // 保存されている設定があれば読み込む
         final settingsMap = jsonDecode(settingsJson) as Map<String, dynamic>;
@@ -45,25 +45,28 @@ class SettingsService extends ChangeNotifier {
       debugPrint('設定の読み込みエラー: $e');
       _settings = AppSettings.defaults;
     }
-    
+
     notifyListeners();
   }
-  
+
   /// Toggle theme mode
   void toggleTheme() {
-    final newMode = _settings.themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    final newMode =
+        _settings.themeMode == ThemeMode.dark
+            ? ThemeMode.light
+            : ThemeMode.dark;
     _settings = _settings.copyWith(themeMode: newMode);
     _saveSettings();
     notifyListeners();
   }
-  
+
   /// Set the theme mode explicitly
   void setThemeMode(ThemeMode mode) {
     _settings = _settings.copyWith(themeMode: mode);
     _saveSettings();
     notifyListeners();
   }
-  
+
   /// Toggle archive URL display (hidden feature)
   void toggleArchiveUrls() {
     _settings = _settings.copyWith(
@@ -72,13 +75,13 @@ class SettingsService extends ChangeNotifier {
     _saveSettings();
     notifyListeners();
   }
-  
+
   /// Handle tap on version number (for hidden feature activation)
   bool handleVersionTap() {
     final newCount = _settings.archiveActivationTapCount + 1;
-    
-    // Secret feature activation requires 3 taps
-    if (newCount >= 3) {
+
+    // Secret feature activation requires 5 taps
+    if (newCount >= 5) {
       _settings = _settings.copyWith(
         archiveActivationTapCount: 0,
         enableArchiveUrls: true,
@@ -87,14 +90,12 @@ class SettingsService extends ChangeNotifier {
       notifyListeners();
       return true;
     } else {
-      _settings = _settings.copyWith(
-        archiveActivationTapCount: newCount,
-      );
+      _settings = _settings.copyWith(archiveActivationTapCount: newCount);
       _saveSettings();
       return false;
     }
   }
-  
+
   /// Save settings
   Future<void> _saveSettings() async {
     try {
