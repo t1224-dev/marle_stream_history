@@ -84,6 +84,9 @@ class _SearchScreenState extends State<SearchScreen>
   SortCriteria _sortCriteria = SortCriteria.dateDesc;
   final FocusNode _searchFocusNode = FocusNode();
   bool _isSearchFocused = false;
+  
+  // カテゴリスクローラー用のスクロールコントローラー
+  final ScrollController _categoryScrollController = ScrollController();
 
   // 全動画データをキャッシュ
   List<YoutubeVideo>? _allVideosCache;
@@ -128,6 +131,7 @@ class _SearchScreenState extends State<SearchScreen>
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _categoryScrollController.dispose();
     
     // お気に入りサービスのリスナーを削除
     if (_favoriteListenerAdded && _favoriteService != null) {
@@ -745,6 +749,46 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
+  /// 検索とフィルタをリセットする
+  void _resetSearch() {
+    setState(() {
+      // 検索クエリをリセット
+      _searchQuery = '';
+      _searchController.clear();
+      
+      // 選択カテゴリをリセット
+      _selectedCategory = null;
+      
+      // ソート基準をデフォルトに戻す
+      _sortCriteria = SortCriteria.dateDesc;
+      
+      // キャッシュをクリアして再読み込み
+      _allVideosCache = null;
+      _videosFuture = _getVideos();
+      
+      // カテゴリスクローラーのスクロール位置を初期位置に戻す
+      if (_categoryScrollController.hasClients) {
+        _categoryScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+      
+      // リセットしたことをユーザーに通知
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('検索条件をリセットしました'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Theme.of(context).primaryColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          margin: const EdgeInsets.all(8),
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -773,21 +817,67 @@ class _SearchScreenState extends State<SearchScreen>
                       ),
                     ),
                     const Spacer(),
-                    // フィルターボタン
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.filter_list),
-                      label: const Text('フィルター'),
-                      onPressed: _toggleFilterExpansion,
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Theme.of(context).primaryColor,
-                        side: BorderSide(
-                          color: Theme.of(context).primaryColor,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
+                    // リセットボタン（画面幅に応じて適応的に表示）
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        // 利用可能な幅を取得
+                        final availableWidth = MediaQuery.of(context).size.width - 80; // ヘッダーの余白などを考慮
+                        final isNarrow = availableWidth < 360; // 狭い画面の判定基準
+                        
+                        return isNarrow
+                            ? IconButton(
+                                icon: const Icon(Icons.refresh),
+                                onPressed: _resetSearch,
+                                tooltip: 'リセット',
+                                color: Theme.of(context).primaryColor,
+                              )
+                            : OutlinedButton.icon(
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('リセット'),
+                                onPressed: _resetSearch,
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Theme.of(context).primaryColor,
+                                  side: BorderSide(
+                                    color: Theme.of(context).primaryColor,
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                              );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    // フィルターボタン（画面幅に応じて適応的に表示）
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final availableWidth = MediaQuery.of(context).size.width - 80;
+                        final isNarrow = availableWidth < 360;
+                        
+                        return isNarrow
+                            ? IconButton(
+                                icon: const Icon(Icons.filter_list),
+                                onPressed: _toggleFilterExpansion,
+                                tooltip: 'フィルター',
+                                color: Theme.of(context).primaryColor,
+                              )
+                            : OutlinedButton.icon(
+                                icon: const Icon(Icons.filter_list),
+                                label: const Text('フィルター'),
+                                onPressed: _toggleFilterExpansion,
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Theme.of(context).primaryColor,
+                                  side: BorderSide(
+                                    color: Theme.of(context).primaryColor,
+                                    width: 1.5,
+                                  ),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                              );
+                      },
                     ),
                   ],
                 ),
@@ -821,6 +911,7 @@ class _SearchScreenState extends State<SearchScreen>
                       child: CategoryScroller(
                         selectedCategory: _selectedCategory,
                         onCategorySelected: _handleCategorySelected,
+                        scrollController: _categoryScrollController,
                       ),
                     );
                   },

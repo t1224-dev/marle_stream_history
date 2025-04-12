@@ -13,6 +13,9 @@ class CategoryScroller extends StatefulWidget {
 
   /// 事前に読み込まれたカテゴリリスト
   final List<String>? categories;
+  
+  /// スクロールコントローラー
+  final ScrollController? scrollController;
 
   /// Constructor
   const CategoryScroller({
@@ -20,6 +23,7 @@ class CategoryScroller extends StatefulWidget {
     this.onCategorySelected,
     this.selectedCategory,
     this.categories,
+    this.scrollController,
   });
 
   @override
@@ -145,6 +149,7 @@ class _CategoryScrollerState extends State<CategoryScroller> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
+        controller: widget.scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
